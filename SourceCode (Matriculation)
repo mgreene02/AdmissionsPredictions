@@ -1,0 +1,86 @@
+# This script will use the Logistic Regression to predict matriculation 
+
+import pandas as pd
+import numpy as np 
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import ShuffleSplit 
+from sklearn.model_selection import cross_val_score 
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import Imputer
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import confusion_matrix
+
+
+datafile = r"M:/Programming_Projects/Python_Projects/Predicting Deposit Enroll Matric/Data/Export 20180911-112938.txt"
+df = pd.read_csv(datafile, header=0, sep="\t")
+
+df["ACT Composite"] = df["ACT Composite"].fillna(df["ACT Composite"].mean())
+df = df.dropna(how='any', axis=0)
+df = df.reset_index()
+print(df.info())
+print(df.head())
+
+# Define the model parameters:
+attrb = ["ACT Composite","App - App Review - App Demonstrated Interest","Event - Total Count"]
+target = ["DepEnrMat?"]
+X = df[attrb].values # Attributes
+y = df[target].values.ravel() # Target
+
+test_size = 0.20
+seed = 42
+n_splits = 10
+
+clf = LogisticRegression(C=1,random_state=42)
+
+pipeline = Pipeline([
+				("clf",clf)
+					])
+
+# Test the results
+results_acc_mean = []
+results_acc_std = []
+results_logloss_mean = []
+results_logloss_std = []
+results_auc_mean = []
+results_auc_std = []
+trials = np.arange(1,n_splits+1)
+for i in trials:
+	kfold = ShuffleSplit(n_splits=i, test_size=test_size, random_state=seed)
+	results_acc = cross_val_score(pipeline, X, y, cv=kfold, scoring='accuracy')
+	results_acc_mean.append(results_acc.mean()) # Accuracy
+	results_acc_std.append(results_acc.std())
+	results_logloss = cross_val_score(pipeline, X, y, cv=kfold, scoring='neg_log_loss')
+	results_logloss_mean.append(results_logloss.mean()) # Log Loss
+	results_logloss_std.append(results_logloss.std())
+	results_auc = cross_val_score(pipeline, X, y, cv=kfold, scoring='roc_auc')
+	results_auc_mean.append(results_auc.mean()) # ROC AUC
+	results_auc_std.append(results_auc.std())
+
+# Make it look good
+eval_list = [results_acc_mean,results_acc_std,
+			 results_logloss_mean,results_logloss_std,
+			 results_auc_mean,results_auc_std]
+names_list1 = iter(["Accuracy","Neg Log Loss","AUC"])
+names_list2 = iter(["Accuracy","Neg Log Loss","AUC"])
+print(eval_list)
+plt.figure(1)
+plt.suptitle("n-Split cross validation")
+for i,res in enumerate(eval_list):
+	if i%2 == 0: #If even (means),
+		plt.subplot(2,3,(i//2+1))
+		plt.title("Model scoring mean")
+		plt.plot(trials, res, label=next(names_list1))
+		plt.legend(loc='upper right')
+	else: #(Odd index, STDs)
+		plt.subplot(2,3,(i//2+4))
+		plt.title("Model scoring st.d.")
+		plt.plot(trials, res, label=next(names_list2))
+		plt.xlabel("# Splits")
+		plt.legend(loc='upper right')
+plt.show()
+
+predicted = pipeline.predict(X_test)
+matrix = confusion_matrix(y_test, predicted)
+print(matrix)
