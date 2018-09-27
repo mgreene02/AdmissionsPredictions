@@ -1,0 +1,86 @@
+# This program will use Machine Learning Pipelines to predict admission decisions
+# Python3.6
+
+# --Imports--
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.preprocessing import Imputer
+
+# LOAD
+filepath = r"M:/Programming_Projects/Python_Projects/AdmissionsDecisionsPredictions/Data/Export 20180906-094210.txt"
+df = pd.read_csv(filepath, sep="\t", header=0)
+
+# CLEAN
+## Impute the means:
+to_imp = ["School 1 GPA Converted", "ACT Composite"]
+for i in to_imp: 
+	i_mean = df[i].mean()
+	df[i].fillna(i_mean, inplace=True)
+
+## Drop any other nan	
+df = df.dropna(axis=0, how="any") # Drops NaN
+df = df.reset_index()
+
+## Set Catagories
+catg = ["Period","AdmitOrNot","MatricOrNot","App - Strength of Curriculum","Race","Active Geomarket"]
+for c in catg:
+	df[c]=df[c].astype("category")
+
+# Get Dummies
+dummi = ["App - Strength of Curriculum","Race","Active Geomarket"]
+df_dum = pd.get_dummies(df[dummi])
+
+df = df.drop(dummi, axis=1)
+df = pd.concat([df, df_dum], axis=1, join='inner')
+
+
+# Split into test/train
+trainfilter = df["Period"] != "2018 Fall"
+testfilter = df["Period"] == "2018 Fall"
+drop_list=["AdmitOrNot","MatricOrNot","Period"]
+
+X_train = df[trainfilter].drop(labels=drop_list,axis=1)
+#y_train = df[trainfilter]["AdmitOrNot"]
+y_train = df[trainfilter]["MatricOrNot"]
+
+X_test = df[testfilter].drop(labels=drop_list,axis=1)
+#y_test = df[testfilter]["AdmitOrNot"]
+y_test = df[testfilter]["MatricOrNot"]
+
+
+# DO IT WITH VARYING NEIGHBORS!!
+neighbors = np.arange(1, 17)
+train_accuracy = np.empty(len(neighbors))
+test_accuracy = np.empty(len(neighbors))
+
+for i, k in enumerate(neighbors):
+	knn = KNeighborsClassifier(n_neighbors = k)
+	knn.fit(X_train, y_train)
+	
+	train_accuracy[i] = knn.score(X_train, y_train)
+	test_accuracy[i] = knn.score(X_test, y_test)
+
+# PRINT
+plt.figure()
+plt.title('k-NN: Varying Number of Neighbors')
+
+plt.subplot(2,1,1)
+plt.plot(neighbors, train_accuracy, label = 'Training Accuracy')
+plt.legend()
+plt.xlabel('Number of Neighbors')
+plt.ylabel('TrainingAccuracy')
+
+plt.subplot(2,1,2)
+plt.plot(neighbors, test_accuracy, label = 'Testing Accuracy')
+plt.legend()
+plt.xlabel('Number of Neighbors')
+plt.ylabel('Testing Accuracy')
+
+plt.show()
+
