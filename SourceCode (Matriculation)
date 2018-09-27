@@ -81,6 +81,6 @@ for i,res in enumerate(eval_list):
 		plt.legend(loc='upper right')
 plt.show()
 
-predicted = pipeline.predict(X_test)
-matrix = confusion_matrix(y_test, predicted)
-print(matrix)
+# predicted = pipeline.predict(X_test)
+# matrix = confusion_matrix(y_test, predicted)
+# print(matrix)
